@@ -89,6 +89,9 @@ export function PostCard({ post, index = 0 }: PostCardProps) {
                     )}
                     <div className="mobile-overlay-banner">
                         <h2 className="mobile-overlay-title">{post.title}</h2>
+                        <div className="mobile-overlay-author">
+                            <span>{post.author.display_name}</span>
+                        </div>
                     </div>
                 </div>
 

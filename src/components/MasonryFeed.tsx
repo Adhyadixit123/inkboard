@@ -20,7 +20,7 @@ function useColumnCount(): number {
     useEffect(() => {
         function update() {
             const w = window.innerWidth;
-            if (w < 640) setCols(2);
+            if (w < 640) setCols(1);
             else if (w < 1024) setCols(3);
             else if (w < 1440) setCols(4);
             else setCols(5);
@@ -43,12 +43,7 @@ function MasonryColumns({ posts }: { posts: Post[] }) {
     }, [posts, numCols]);
 
     return (
-        <div style={{
-            display: 'flex',
-            gap: '16px',
-            padding: '0 16px',
-            alignItems: 'flex-start',
-        }}>
+        <div className="masonry-columns-container">
             {columns.map((colPosts, colIdx) => (
                 <div key={colIdx} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
                     {colPosts.map((post, rowIdx) => (
