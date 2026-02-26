@@ -82,10 +82,14 @@ export function PostCard({ post, index = 0 }: PostCardProps) {
                                 fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.5px',
                                 textDecoration: 'none', zIndex: 20,
                             }}
+                            className="hide-mobile"
                         >
                             via {post.source === 'devto' ? 'Dev.to' : post.source === 'hashnode' ? 'Hashnode' : post.source === 'wikinews' ? 'Wikinews' : 'The Guardian'}
                         </Link>
                     )}
+                    <div className="mobile-overlay-banner">
+                        <h2 className="mobile-overlay-title">{post.title}</h2>
+                    </div>
                 </div>
 
                 {/* Author Row */}

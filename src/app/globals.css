@@ -163,6 +163,7 @@ body {
   color: var(--color-primary);
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin-bottom: 6px;
@@ -174,6 +175,7 @@ body {
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin-bottom: 10px;
@@ -930,4 +932,60 @@ body {
 
 .hide-scroll::-webkit-scrollbar {
   display: none;
+}
+
+/* ─── Mobile Card Overlay ────────────────────────────────── */
+.mobile-overlay-banner {
+  display: none;
+}
+
+@media (max-width: 639px) {
+
+  /* Hide standard card parts */
+  .post-card .post-card-body,
+  .post-card .author-row,
+  .post-card .engagement-bar {
+    display: none !important;
+  }
+
+  .post-card {
+    border: none;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .post-card-image {
+    border-radius: 12px;
+  }
+
+  .mobile-overlay-banner {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 32px 10px 10px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 60%, transparent 100%);
+    color: white;
+    pointer-events: none;
+    z-index: 15;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+  }
+
+  .mobile-overlay-title {
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.3;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    font-family: var(--font-ui);
+  }
 }
