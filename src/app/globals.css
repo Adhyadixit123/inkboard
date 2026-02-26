@@ -99,6 +99,18 @@ body {
     gap: 8px;
     padding: 0 8px;
   }
+
+  .masonry-column {
+    gap: 8px !important;
+  }
+}
+
+.masonry-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 
 .masonry-grid {

@@ -45,7 +45,7 @@ function MasonryColumns({ posts }: { posts: Post[] }) {
     return (
         <div className="masonry-columns-container">
             {columns.map((colPosts, colIdx) => (
-                <div key={colIdx} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
+                <div key={colIdx} className="masonry-column">
                     {colPosts.map((post, rowIdx) => (
                         <PostCard
                             key={post.id}

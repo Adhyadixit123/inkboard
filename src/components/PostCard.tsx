@@ -13,12 +13,21 @@ const LOCAL_ASPECT_RATIO_PADDING: Record<string, string> = {
     '1:1': '100%',
 };
 
+// Force a dynamic, Pinterest-style tall aspect ratio for all images
+// This ensures the grid looks like a proper masonry feed even if all API images are 16:9
+function getMasonryPadding(post: Post) {
+    const ratios = ['133.3%', '150%', '177.8%', '125%', '140%', '160%']; // 3:4, 2:3, 9:16, 4:5, 5:7, 5:8
+    let hash = 0;
+    for (let i = 0; i < post.id.length; i++) {
+        hash = post.id.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return ratios[Math.abs(hash) % ratios.length];
+}
+
 function formatNumber(n: number) {
     if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
     return `${n}`;
 }
-
-
 
 interface PostCardProps {
     post: Post;
@@ -57,7 +66,7 @@ export function PostCard({ post, index = 0 }: PostCardProps) {
             <article className="post-card">
                 <Link href={`/post/${post.id}`} style={{ position: 'absolute', inset: 0, zIndex: 10 }} aria-label={`View ${post.title}`} />
                 {/* Cover Image */}
-                <div style={{ position: 'relative', paddingBottom: LOCAL_ASPECT_RATIO_PADDING[post.cover_aspect_ratio] || '100%', height: 0, overflow: 'hidden' }}>
+                <div style={{ position: 'relative', paddingBottom: getMasonryPadding(post), height: 0, overflow: 'hidden' }}>
                     <img
                         src={post.cover_image_url || 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=600&q=80'}
                         alt={post.title}
