@@ -94,6 +94,14 @@ body {
   align-items: flex-start;
 }
 
+.masonry-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
 @media (max-width: 639px) {
   .masonry-columns-container {
     gap: 8px;
@@ -101,16 +109,8 @@ body {
   }
 
   .masonry-column {
-    gap: 8px !important;
+    gap: 8px;
   }
-}
-
-.masonry-column {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
 }
 
 .masonry-grid {
@@ -147,6 +147,10 @@ body {
   margin-bottom: 16px;
   display: inline-block;
   width: 100%;
+}
+
+.masonry-columns-container .masonry-item {
+  margin-bottom: 0;
 }
 
 @media (min-width: 1024px) {
@@ -966,6 +970,10 @@ body {
 }
 
 @media (max-width: 639px) {
+  .masonry-item {
+    margin-bottom: 0 !important;
+    display: block !important;
+  }
 
   /* Hide standard card parts */
   .post-card .post-card-body,
