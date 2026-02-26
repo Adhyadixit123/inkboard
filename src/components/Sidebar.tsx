@@ -17,7 +17,7 @@ export function Sidebar() {
         };
         checkSession();
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
             setIsLoggedIn(!!session);
         });
 

@@ -36,7 +36,7 @@ export function Navbar() {
         checkSession();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            (event, session) => {
+            (event: any, session: any) => {
                 setIsLoggedIn(!!session);
                 setUserEmail(session?.user?.email || null);
             }
