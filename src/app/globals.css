@@ -96,8 +96,8 @@ body {
 
 @media (max-width: 639px) {
   .masonry-columns-container {
-    gap: 12px;
-    padding: 0 12px;
+    gap: 8px;
+    padding: 0 8px;
   }
 }
 
@@ -978,11 +978,11 @@ body {
     justify-content: flex-end;
     position: absolute;
     inset: 0;
-    padding: 24px 16px;
+    padding: 14px 10px;
     background: linear-gradient(to top,
-        rgba(0, 0, 0, 0.85) 0%,
-        rgba(0, 0, 0, 0.4) 40%,
-        transparent 80%);
+        rgba(0, 0, 0, 0.9) 0%,
+        rgba(0, 0, 0, 0.3) 55%,
+        transparent 90%);
     color: white;
     pointer-events: none;
     z-index: 15;
@@ -990,8 +990,8 @@ body {
   }
 
   .mobile-overlay-title {
-    font-size: 16px;
-    font-weight: 800;
+    font-size: 13.5px;
+    font-weight: 700;
     line-height: 1.25;
     margin: 0;
     display: -webkit-box;
@@ -999,19 +999,19 @@ body {
     line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-    font-family: 'Playfair Display', serif;
-    max-width: 90%;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    font-family: var(--font-serif);
+    max-width: 100%;
   }
 
   .mobile-overlay-author {
-    font-size: 11px;
-    color: rgba(255, 255, 255, 0.9);
-    margin-top: 8px;
+    font-size: 9.5px;
+    color: rgba(255, 255, 255, 0.85);
+    margin-top: 4px;
     font-family: var(--font-ui);
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     font-weight: 500;
   }
 }
