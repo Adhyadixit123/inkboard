@@ -4,6 +4,7 @@ import { Navbar } from '@/components/Navbar';
 import { Sidebar } from '@/components/Sidebar';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://inkboard-writing.vercel.app'), // Replace with your actual domain later
   title: {
     default: 'Inkboard — Discover Writing You Love',
     template: '%s | Inkboard',
