@@ -5,6 +5,14 @@ import { usePathname } from 'next/navigation';
 import { Home, Compass, Plus, Bell, MessageCircle, User, LogIn, UserPlus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
+type NavItem = {
+    href: string;
+    icon: React.ReactElement;
+    label: string;
+    public?: boolean;
+    kind?: 'write';
+};
+
 export function Sidebar() {
     const pathname = usePathname();
     const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -35,7 +43,7 @@ export function Sidebar() {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const desktopItems = [
+    const desktopItems: NavItem[] = [
         { href: '/', icon: <Home size={22} />, label: 'Home', public: true },
         { href: '/explore', icon: <Compass size={22} />, label: 'Explore', public: true },
         { href: '/compose', icon: <Plus size={22} />, label: 'Create', public: false },
@@ -44,7 +52,7 @@ export function Sidebar() {
         { href: '/profile', icon: <User size={22} />, label: 'Profile', public: false },
     ];
 
-    const mobileItemsAuthed = [
+    const mobileItemsAuthed: NavItem[] = [
         { href: '/', icon: <Home size={22} />, label: 'Home' },
         { href: '/explore', icon: <Compass size={22} />, label: 'Explore' },
         { href: '/compose', icon: <Plus size={26} />, label: 'Write', kind: 'write' },
@@ -52,7 +60,7 @@ export function Sidebar() {
         { href: '/profile', icon: <User size={22} />, label: 'Profile' },
     ];
 
-    const mobileItemsGuest = [
+    const mobileItemsGuest: NavItem[] = [
         { href: '/', icon: <Home size={22} />, label: 'Home' },
         { href: '/explore', icon: <Compass size={22} />, label: 'Explore' },
         { href: '/login', icon: <LogIn size={22} />, label: 'Log in' },
