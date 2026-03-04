@@ -105,7 +105,7 @@ export default function ComposePage() {
         author: {
             id: 'u3', email: '', username: 'you', display_name: 'You',
             avatar_url: 'https://i.pravatar.cc/150?img=25',
-            role: 'USER', is_verified: false, is_suspended: false,
+            role: 'USER', is_verified: false, is_suspended: false, is_business: false,
             created_at: new Date().toISOString(), follower_count: 0,
             following_count: 0, total_likes: 0, post_count: 0,
         },
