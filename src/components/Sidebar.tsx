@@ -43,6 +43,42 @@ export function Sidebar() {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const root = document.documentElement;
+
+        const updateMobileBottomGap = () => {
+            if (window.innerWidth > 768) {
+                root.style.setProperty('--mobile-bottom-gap', '0px');
+                return;
+            }
+
+            const viewport = window.visualViewport;
+            if (!viewport) {
+                root.style.setProperty('--mobile-bottom-gap', '0px');
+                return;
+            }
+
+            const availableHeight = viewport.height + viewport.offsetTop;
+            const gap = Math.max(0, window.innerHeight - availableHeight);
+            root.style.setProperty('--mobile-bottom-gap', `${Math.round(gap)}px`);
+        };
+
+        updateMobileBottomGap();
+        const viewport = window.visualViewport;
+        window.addEventListener('resize', updateMobileBottomGap);
+        window.addEventListener('orientationchange', updateMobileBottomGap);
+        viewport?.addEventListener('resize', updateMobileBottomGap);
+        viewport?.addEventListener('scroll', updateMobileBottomGap);
+
+        return () => {
+            window.removeEventListener('resize', updateMobileBottomGap);
+            window.removeEventListener('orientationchange', updateMobileBottomGap);
+            viewport?.removeEventListener('resize', updateMobileBottomGap);
+            viewport?.removeEventListener('scroll', updateMobileBottomGap);
+        };
+    }, []);
+
     const desktopItems: NavItem[] = [
         { href: '/', icon: <Home size={22} />, label: 'Home', public: true },
         { href: '/explore', icon: <Compass size={22} />, label: 'Explore', public: true },
