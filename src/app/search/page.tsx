@@ -107,7 +107,7 @@ function SearchResults() {
                                                 {user.bio && <div style={{ fontSize: '13px', color: 'var(--color-primary)', marginTop: '4px', opacity: 0.7 }}>{user.bio.slice(0, 80)}…</div>}
                                             </div>
                                             <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                                <div style={{ fontFamily: 'var(--font-serif)', fontSize: '18px', fontWeight: 700 }}>{user.follower_count.toLocaleString()}</div>
+                                                <div style={{ fontFamily: 'var(--font-serif)', fontSize: '18px', fontWeight: 700 }}>{(user.follower_count ?? 0).toLocaleString()}</div>
                                                 <div style={{ fontSize: '11px', color: 'var(--color-muted)' }}>followers</div>
                                             </div>
                                         </div>

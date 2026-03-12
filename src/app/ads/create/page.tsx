@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { Image as ImageIcon, Tag, MapPin, Target, Smartphone, User, DollarSign, Calendar, Monitor, BarChart3, Zap, TrendingUp, Link as LinkIcon } from 'lucide-react';
+import { Image as ImageIcon, Tag, MapPin, Target, Smartphone, User, DollarSign, Calendar, Monitor, BarChart3, Zap, TrendingUp, Link as LinkIcon, Briefcase } from 'lucide-react';
 
 export default function CreateAdRequest() {
     const supabase = createClient();

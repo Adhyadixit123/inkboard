@@ -84,7 +84,7 @@ export default function AdsDashboard() {
                         .then(({ data: request }: { data: BusinessRequestRow | null }) => {
                             if (request) setBusinessRequest(request);
                         })
-                        .catch(err => {
+                        .catch((err: unknown) => {
                             console.error('[ads] business request lookup failed', err);
                         });
                 }

@@ -102,7 +102,7 @@ export function PostCard({ post, index = 0 }: PostCardProps) {
                     <div className="mobile-overlay-banner">
                         <h2 className="mobile-overlay-title">{post.title}</h2>
                         <div className="mobile-overlay-author">
-                            <span>{post.author.display_name}</span>
+                            <span>{post.author?.display_name ?? 'Unknown'}</span>
                         </div>
                     </div>
                 </div>
@@ -110,22 +110,30 @@ export function PostCard({ post, index = 0 }: PostCardProps) {
                 {/* Author Row */}
                 <div className="author-row">
                     <Link
-                        href={post.source ? `/source/${post.source}` : `/u/${post.author.username}`}
+                        href={post.source ? `/source/${post.source}` : post.author ? `/u/${post.author.username}` : '#'}
                         onClick={e => e.stopPropagation()}
                         style={{ textDecoration: 'none' }}
                     >
-                        <img src={post.author.avatar_url || 'https://api.dicebear.com/7.x/initials/svg?seed=' + encodeURIComponent(post.author.display_name || 'User')}
-                            alt={post.author.display_name || 'User'} className="avatar"
+                        <img src={post.author?.avatar_url || 'https://api.dicebear.com/7.x/initials/svg?seed=' + encodeURIComponent(post.author?.display_name || 'User')}
+                            alt={post.author?.display_name || 'User'} className="avatar"
                             style={{ width: '28px', height: '28px' }} />
                     </Link>
                     <div style={{ flex: 1, overflow: 'hidden' }}>
                         <Link
-                            href={post.source ? `/source/${post.source}` : `/u/${post.author.username}`}
+                            href={post.source ? `/source/${post.source}` : post.author ? `/u/${post.author.username}` : '#'}
                             onClick={e => e.stopPropagation()}
                             className="author-name"
                             style={{ textDecoration: 'none' }}
                         >
-                            {post.source ? (post.source === 'devto' ? 'Dev.to' : post.source === 'hashnode' ? 'Hashnode' : post.source === 'wikinews' ? 'Wikinews' : post.author.display_name) : post.author.display_name}
+                            {post.source
+                                ? (post.source === 'devto'
+                                    ? 'Dev.to'
+                                    : post.source === 'hashnode'
+                                        ? 'Hashnode'
+                                        : post.source === 'wikinews'
+                                            ? 'Wikinews'
+                                            : post.author?.display_name ?? 'Unknown')
+                                : post.author?.display_name ?? 'Unknown'}
                         </Link>
                     </div>
                     <div className="read-time" style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>

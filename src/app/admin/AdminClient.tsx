@@ -197,7 +197,7 @@ function UsersView() {
                                         : <XCircle size={16} style={{ color: '#DC2626' }} />}
                                 </td>
                                 <td style={{ padding: '12px 16px', fontSize: '13px', fontFamily: 'var(--font-ui)', fontWeight: 600 }}>
-                                    {formatK(user.follower_count)}
+                                    {formatK(user.follower_count || 0)}
                                 </td>
                                 <td style={{ padding: '12px 16px' }}>
                                     <div style={{ display: 'flex', gap: '6px' }}>

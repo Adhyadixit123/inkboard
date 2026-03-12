@@ -42,6 +42,10 @@ function useColumnCount(): number {
     return cols;
 }
 
+function isFeedAd(item: Post | FeedAd): item is FeedAd {
+    return 'target_url' in item;
+}
+
 function MasonryAdCard({ ad, index }: { ad: FeedAd, index: number }) {
     const images = ad.image_urls && ad.image_urls.length > 0 ? ad.image_urls : [ad.image_url];
     const [currentImg, setCurrentImg] = useState(0);
@@ -131,7 +135,7 @@ function MasonryColumns({ items }: { items: Array<Post | FeedAd> }) {
                 <div key={colIdx} className="masonry-column">
                     {colItems.map((item, rowIdx) => {
                         const index = colIdx + rowIdx * numCols;
-                        if (item.target_url) {
+                        if (isFeedAd(item) && item.target_url) {
                             return <MasonryAdCard key={`ad-${item.id}`} ad={item} index={index} />;
                         }
                         return <PostCard
@@ -211,10 +215,11 @@ function FeedInner({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
         fetch(`/api/feed?topic=${encodeURIComponent(currentTopic)}&page=${page}`)
             .then(res => res.json())
             .then((data: FeedResponse) => {
-                if (data.posts && data.posts.length > 0) {
+                const incomingPosts = data.posts ?? [];
+                if (incomingPosts.length > 0) {
                     setPosts(prev => {
                         const ids = new Set(prev.map(p => p.id));
-                        const fresh = data.posts.filter((p: Post) => !ids.has(p.id));
+                        const fresh = incomingPosts.filter((p: Post) => !ids.has(p.id));
                         return [...prev, ...fresh];
                     });
                     setPage(p => p + 1);
@@ -227,11 +232,15 @@ function FeedInner({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
     };
 
     const displayPosts = activeInterest
-        ? posts.filter(p => p.tags.some(t => t.name === activeInterest.toLowerCase()) || p.author.bio?.toLowerCase().includes(activeInterest.toLowerCase()))
+        ? posts.filter(p => {
+            const matchesTag = p.tags.some(t => t.name === activeInterest.toLowerCase());
+            const matchesAuthorBio = p.author?.bio?.toLowerCase().includes(activeInterest.toLowerCase()) ?? false;
+            return matchesTag || matchesAuthorBio;
+        })
         : posts;
 
     const feedItems = useMemo(() => {
-        const items = [...displayPosts];
+        const items: Array<Post | FeedAd> = [...displayPosts];
         if (ads.length > 0) {
             let adCounter = 0;
             // Inject an ad every 6 items (index 4, 11, etc.)
@@ -300,7 +309,7 @@ function FeedInner({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
                                             {post.title}
                                         </p>
                                         <p style={{ fontSize: '11px', color: 'var(--color-muted)', marginTop: '5px' }}>
-                                            {post.author.display_name}
+                                            {post.author?.display_name ?? 'Unknown'}
                                         </p>
                                     </div>
                                 </div>

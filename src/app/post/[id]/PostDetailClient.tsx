@@ -144,12 +144,20 @@ export function PostDetailClient({ post, comments, morePosts }: Props) {
 
                     {/* Author Byline */}
                     <div className="post-detail-author-row" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '18px 0', borderTop: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', marginBottom: '36px' }}>
-                        <Link href={post.source ? `/source/${post.source}` : `/u/${post.author.username}`}>
-                            <img src={post.author.avatar_url} alt={post.author.display_name} className="avatar" style={{ width: '48px', height: '48px', border: '2px solid var(--color-border)' }} />
+                        <Link href={post.source ? `/source/${post.source}` : post.author ? `/u/${post.author.username}` : '#'}>
+                            <img src={post.author?.avatar_url || '/placeholder-avatar.png'} alt={post.author?.display_name ?? 'Author avatar'} className="avatar" style={{ width: '48px', height: '48px', border: '2px solid var(--color-border)' }} />
                         </Link>
                         <div style={{ flex: 1 }}>
-                            <Link href={post.source ? `/source/${post.source}` : `/u/${post.author.username}`} className="author-name" style={{ fontSize: '15px', display: 'block' }}>
-                                {post.source ? (post.source === 'devto' ? 'Dev.to' : post.source === 'hashnode' ? 'Hashnode' : post.source === 'wikinews' ? 'Wikinews' : post.author.display_name) : post.author.display_name}
+                            <Link href={post.source ? `/source/${post.source}` : post.author ? `/u/${post.author.username}` : '#'} className="author-name" style={{ fontSize: '15px', display: 'block' }}>
+                                {post.source
+                                    ? (post.source === 'devto'
+                                        ? 'Dev.to'
+                                        : post.source === 'hashnode'
+                                            ? 'Hashnode'
+                                            : post.source === 'wikinews'
+                                                ? 'Wikinews'
+                                                : post.author?.display_name ?? 'Unknown')
+                                    : post.author?.display_name ?? 'Unknown'}
                             </Link>
                             <div className="post-detail-author-meta" style={{ display: 'flex', gap: '12px', marginTop: '3px' }}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-muted)', fontSize: '12px' }}>
@@ -307,12 +315,12 @@ const reading = (text) => {
                 <div className="more-from-section">
                     <div className="more-from-inner">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-                            <img src={post.author.avatar_url} alt={post.author.display_name}
+                            <img src={post.author?.avatar_url || '/placeholder-avatar.png'} alt={post.author?.display_name ?? 'Author avatar'}
                                 className="avatar" style={{ width: '40px', height: '40px' }} />
                             <div>
                                 <p style={{ fontFamily: 'var(--font-ui)', fontSize: '13px', color: 'var(--color-muted)' }}>More from</p>
-                                <Link href={`/u/${post.author.username}`} className="author-name" style={{ fontSize: '16px' }}>
-                                    {post.author.display_name}
+                                <Link href={post.author ? `/u/${post.author.username}` : '#'} className="author-name" style={{ fontSize: '16px' }}>
+                                    {post.author?.display_name ?? 'Unknown'}
                                 </Link>
                             </div>
                         </div>

@@ -104,10 +104,16 @@ export default function BusinessAnalyticsDashboard() {
                 url += `adId=${selectedAdId}&`;
             }
             
-            if (dateRange === 'custom' && customStartDate && customEndDate) {
-                url += `startDate=${customStartDate}&endDate=${customEndDate}`;
+            if (dateRange === 'custom') {
+                if (customStartDate && customEndDate) {
+                    url += `startDate=${customStartDate}&endDate=${customEndDate}`;
+                } else {
+                    url += 'days=30';
+                }
             } else {
-                const days = { '7d': 7, '30d': 30, '90d': 90 }[dateRange] || 30;
+                const daysMap: Record<Exclude<DateRange, 'custom'>, number> = { '7d': 7, '30d': 30, '90d': 90 };
+                const presetRange = dateRange as Exclude<DateRange, 'custom'>;
+                const days = daysMap[presetRange];
                 url += `days=${days}`;
             }
             
