@@ -1,51 +1,98 @@
 'use client';
 import { useState, useEffect } from 'react';
+import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
-import { Plus, BarChart2, CheckCircle, XCircle, Clock, Megaphone } from 'lucide-react';
+import { Plus, BarChart2, CheckCircle, XCircle, Clock, Megaphone, DollarSign } from 'lucide-react';
 import Link from 'next/link';
+
+type AdRecord = {
+    id: string;
+    user_id: string;
+    title?: string | null;
+    description?: string | null;
+    image_url: string;
+    status?: string | null;
+    created_at: string;
+    views_count?: number | null;
+    clicks_count?: number | null;
+    daily_budget?: number | null;
+    total_budget?: number | null;
+};
+
+type BusinessProfile = {
+    is_business?: boolean | null;
+};
+
+type BusinessRequestRow = {
+    id?: string;
+    status?: string | null;
+};
 
 export default function AdsDashboard() {
     const supabase = createClient();
-    const [ads, setAds] = useState<any[]>([]);
+    const [ads, setAds] = useState<AdRecord[]>([]);
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
-    const [profile, setProfile] = useState<any>(null);
-    const [businessRequest, setBusinessRequest] = useState<any>(null);
+    const [user, setUser] = useState<User | null>(null);
+    const [profile, setProfile] = useState<BusinessProfile | null>(null);
+    const [businessRequest, setBusinessRequest] = useState<BusinessRequestRow | null>(null);
     const [requestForm, setRequestForm] = useState(false);
     const [businessName, setBusinessName] = useState('');
     const [websiteUrl, setWebsiteUrl] = useState('');
     const [description, setDescription] = useState('');
     const [requestLoading, setRequestLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchAds = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                setLoading(false);
-                return;
-            }
-            setUser(session.user);
+            setLoading(true);
+            setError(null);
+            try {
+                const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+                if (sessionError) throw sessionError;
 
-            // Fetch user profile to check if they are a business
-            const { data: profile } = await supabase.from('users').select('is_business').eq('id', session.user.id).single();
-            setProfile(profile);
+                const session = sessionData?.session;
+                if (!session) {
+                    setUser(null);
+                    return;
+                }
 
-            if (profile?.is_business) {
-                const { data, error } = await supabase
-                    .from('ads')
-                    .select('*')
-                    .eq('user_id', session.user.id)
-                    .order('created_at', { ascending: false });
-                if (data) setAds(data);
-                setLoading(false);
-            } else {
-                // Instantly stop loading to show the fallback page!
-                setLoading(false);
+                setUser(session.user);
 
-                // Lazily check if they have a pending business request without blocking the UI
-                supabase.from('business_requests').select('*').eq('user_id', session.user.id).maybeSingle().then(({ data: request }: { data: any }) => {
-                    if (request) setBusinessRequest(request);
-                });
+                const { data: profileData, error: profileError } = await supabase
+                    .from('users')
+                    .select('is_business')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (profileError) throw profileError;
+                setProfile(profileData);
+
+                if (profileData?.is_business) {
+                    const { data, error } = await supabase
+                        .from('ads')
+                        .select('*')
+                        .eq('user_id', session.user.id)
+                        .order('created_at', { ascending: false });
+                    if (error) throw error;
+                    if (data) setAds(data);
+                } else {
+                    void supabase
+                        .from('business_requests')
+                        .select('*')
+                        .eq('user_id', session.user.id)
+                        .maybeSingle()
+                        .then(({ data: request }: { data: BusinessRequestRow | null }) => {
+                            if (request) setBusinessRequest(request);
+                        })
+                        .catch(err => {
+                            console.error('[ads] business request lookup failed', err);
+                        });
+                }
+            } catch (err) {
+                console.error('[ads] failed to load dashboard', err);
+                setError(err instanceof Error ? err.message : 'Unable to load ads right now.');
+            } finally {
+                setLoading(false);
             }
         };
         fetchAds();
@@ -53,6 +100,10 @@ export default function AdsDashboard() {
 
     const handleRequestSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!user) {
+            setError('You must be logged in to submit an ad request.');
+            return;
+        }
         setRequestLoading(true);
         const { error } = await supabase.from('business_requests').insert({
             user_id: user.id,
@@ -73,6 +124,14 @@ export default function AdsDashboard() {
         return (
             <div style={{ padding: '40px', color: 'var(--color-muted)', fontFamily: 'var(--font-ui)' }}>
                 Loading ads...
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div style={{ padding: '40px', color: '#B91C1C', fontFamily: 'var(--font-ui)' }}>
+                {error}
             </div>
         );
     }
@@ -144,10 +203,20 @@ export default function AdsDashboard() {
                     </h1>
                     <p style={{ color: 'var(--color-muted)' }}>Display targeted sponsored ads directly in the feed to reach interested people.</p>
                 </div>
-                <Link href="/ads/create" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Plus size={18} />
-                    Create Ad Request
-                </Link>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <Link href="/business/wallet" className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <DollarSign size={18} />
+                        Wallet
+                    </Link>
+                    <Link href="/ads/analytics" className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <BarChart2 size={18} />
+                        Analytics
+                    </Link>
+                    <Link href="/ads/create" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Plus size={18} />
+                        Create Ad
+                    </Link>
+                </div>
             </div>
 
             {ads.length === 0 ? (
@@ -179,19 +248,35 @@ export default function AdsDashboard() {
                             boxShadow: 'var(--shadow-sm)'
                         }}>
                             <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                                {ad.image_url.match(/\.(mp4|webm|mov|ogg)$/i) || ad.image_url.includes('/video/upload/') ? (
+                                {(ad.image_url ?? '').match(/\.(mp4|webm|mov|ogg)$/i) || (ad.image_url ?? '').includes('/video/upload/') ? (
                                     <video src={ad.image_url} style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'cover' }} muted autoPlay loop playsInline />
                                 ) : (
-                                    <img src={ad.image_url} alt={ad.title} style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'cover' }} />
+                                    <img src={ad.image_url} alt={ad.title || 'Ad creative'} style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'cover' }} />
                                 )}
                                 <div>
-                                    <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-primary)', marginBottom: '4px' }}>{ad.title}</h3>
+                                    <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-primary)', marginBottom: '4px' }}>{ad.title || 'Untitled ad'}</h3>
                                     <p style={{ fontSize: '14px', color: 'var(--color-muted)', marginBottom: '8px' }}>{ad.description || 'No description'}</p>
                                     <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: 'var(--color-muted)' }}>
                                         <span><strong>Views:</strong> {ad.views_count}</span>
                                         <span><strong>Clicks:</strong> {ad.clicks_count}</span>
-                                        {ad.daily_budget > 0 && <span><strong>Daily Budget:</strong> ${ad.daily_budget}</span>}
-                                        {ad.total_budget > 0 && <span><strong>Total Budget:</strong> ${ad.total_budget}</span>}
+                                        {(ad.daily_budget ?? 0) > 0 && <span><strong>Daily Budget:</strong> ${ad.daily_budget}</span>}
+                                        {(ad.total_budget ?? 0) > 0 && <span><strong>Total Budget:</strong> ${ad.total_budget}</span>}
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                                        <Link 
+                                            href={`/ads/analytics?adId=${ad.id}`} 
+                                            style={{ 
+                                                fontSize: '12px', 
+                                                color: '#3B82F6', 
+                                                textDecoration: 'none',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                            }}
+                                        >
+                                            <BarChart2 size={12} />
+                                            View Analytics
+                                        </Link>
                                     </div>
                                 </div>
                             </div>

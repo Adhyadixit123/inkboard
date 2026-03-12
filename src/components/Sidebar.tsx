@@ -67,6 +67,10 @@ export function Sidebar() {
         { href: '/register', icon: <UserPlus size={22} />, label: 'Sign up' },
     ];
 
+    if (pathname.startsWith('/admin')) {
+        return null;
+    }
+
     return (
         <aside className="sidebar">
             <Link href="/" className="sidebar-logo">

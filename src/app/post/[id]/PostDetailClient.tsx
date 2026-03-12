@@ -316,7 +316,7 @@ const reading = (text) => {
                                 </Link>
                             </div>
                         </div>
-                        <div className="masonry-grid" style={{ paddingLeft: 0, paddingRight: 0 }}>
+                        <div className="more-from-grid">
                             {morePosts.map((p, i) => <PostCard key={p.id} post={p} index={i} />)}
                         </div>
                     </div>

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
@@ -15,8 +15,73 @@ export default function LoginPage() {
 
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [adminStatus, setAdminStatus] = useState({
+        loading: true,
+        hasAdmin: true,
+        setupLinkActive: false,
+        expiresAt: null as string | null,
+        linkToken: null as string | null,
+        linkUrl: null as string | null,
+        generating: false,
+        error: null as string | null,
+    });
     const router = useRouter();
     const supabase = createClient();
+
+    useEffect(() => {
+        const fetchStatus = async () => {
+            try {
+                const res = await fetch('/api/admin/status', { cache: 'no-store' });
+                if (!res.ok) throw new Error('Failed to load admin status');
+                const data = await res.json();
+                setAdminStatus(prev => ({
+                    ...prev,
+                    loading: false,
+                    hasAdmin: data.hasAdmin,
+                    setupLinkActive: data.setupLinkActive,
+                    expiresAt: data.expiresAt ?? null,
+                }));
+            } catch (err: any) {
+                setAdminStatus(prev => ({
+                    ...prev,
+                    loading: false,
+                    error: err?.message || 'Unable to load admin status',
+                }));
+            }
+        };
+        fetchStatus();
+    }, []);
+
+    const handleGenerateAdminLink = async () => {
+        setAdminStatus(prev => ({ ...prev, generating: true, error: null }));
+        try {
+            const res = await fetch('/api/admin/setup-link', { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data?.error || 'Failed to create setup link');
+            }
+
+            const linkUrl = typeof window !== 'undefined' ? `${window.location.origin}/admin/setup?token=${data.token}` : null;
+
+            setAdminStatus(prev => ({
+                ...prev,
+                hasAdmin: false,
+                setupLinkActive: true,
+                expiresAt: data.expiresAt ?? null,
+                linkToken: data.token,
+                linkUrl,
+                generating: false,
+            }));
+        } catch (err: any) {
+            setAdminStatus(prev => ({
+                ...prev,
+                generating: false,
+                error: err?.message || 'Failed to create setup link',
+            }));
+        }
+    };
+
+    const showAdminSetup = !adminStatus.loading && !adminStatus.hasAdmin;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -156,6 +221,49 @@ export default function LoginPage() {
                     Don't have an account?{' '}
                     <Link href="/register" style={{ color: 'var(--color-accent-2)', fontWeight: 600 }}>Sign up free</Link>
                 </p>
+
+                {showAdminSetup && (
+                    <div style={{ marginTop: '32px', padding: '18px', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', textAlign: 'left' }}>
+                        <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px', fontFamily: 'var(--font-ui)' }}>Set up the first admin</h3>
+                        <p style={{ fontSize: '13px', color: 'var(--color-muted)', marginBottom: '12px' }}>
+                            No admin account exists yet. Generate a one-time setup link to create the first administrator. The link expires after 15 minutes or immediately once the admin is created.
+                        </p>
+                        {adminStatus.linkUrl ? (
+                            <div>
+                                <div style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', wordBreak: 'break-all', padding: '8px', background: 'var(--color-bg)', borderRadius: '8px', marginBottom: '8px' }}>
+                                    {adminStatus.linkUrl}
+                                </div>
+                                <p style={{ fontSize: '12px', color: 'var(--color-muted)', marginBottom: '12px' }}>
+                                    Share securely with the person who will become the admin. Expires {adminStatus.expiresAt ? new Date(adminStatus.expiresAt).toLocaleString() : 'soon'}.
+                                </p>
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    onClick={() => {
+                                        if (!adminStatus.linkUrl) return;
+                                        navigator.clipboard?.writeText(adminStatus.linkUrl);
+                                    }}
+                                    style={{ width: '100%' }}
+                                >
+                                    Copy setup link
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                type="button"
+                                className="btn btn-primary"
+                                onClick={handleGenerateAdminLink}
+                                disabled={adminStatus.generating}
+                                style={{ width: '100%', opacity: adminStatus.generating ? 0.6 : 1 }}
+                            >
+                                {adminStatus.generating ? 'Preparing link…' : 'Generate admin setup link'}
+                            </button>
+                        )}
+                        {adminStatus.error && (
+                            <p style={{ marginTop: '10px', fontSize: '12px', color: '#DC2626' }}>{adminStatus.error}</p>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );

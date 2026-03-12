@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { Image as ImageIcon, Briefcase, Tag, MapPin, Target, Smartphone, User, DollarSign, Calendar, Monitor, Cpu } from 'lucide-react';
+import { Image as ImageIcon, Tag, MapPin, Target, Smartphone, User, DollarSign, Calendar, Monitor, BarChart3, Zap, TrendingUp, Link as LinkIcon } from 'lucide-react';
 
 export default function CreateAdRequest() {
     const supabase = createClient();
@@ -24,9 +24,16 @@ export default function CreateAdRequest() {
     const [osFamilies, setOsFamilies] = useState('');
     const [incomeLevels, setIncomeLevels] = useState('');
 
-    // Budgets
+    // Budgets and Auction
     const [dailyBudget, setDailyBudget] = useState('');
     const [totalBudget, setTotalBudget] = useState('');
+    const [maxCpc, setMaxCpc] = useState('0.50');
+    const [category, setCategory] = useState('GENERAL');
+    const [pacingMode, setPacingMode] = useState('STANDARD');
+    
+    // Quality Score inputs (for initial setup)
+    const [expectedCtr, setExpectedCtr] = useState('0.02');
+    const [landingPageUrl, setLandingPageUrl] = useState('');
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -123,14 +130,20 @@ export default function CreateAdRequest() {
                     target_income_levels: targetIncomeLevels,
                     daily_budget: Number(dailyBudget) || 0,
                     total_budget: Number(totalBudget) || 0,
+                    max_cpc: Number(maxCpc) || 0.5,
+                    category,
+                    pacing_mode: pacingMode,
+                    expected_ctr: Number(expectedCtr) || 0.02,
+                    landing_page_url: landingPageUrl,
+                    is_starter_boost: true, // Enable starter boost for new ads
                     status: 'PENDING'
                 });
 
             if (dbError) throw dbError;
 
             router.push('/ads');
-        } catch (err: any) {
-            setError(err.message || 'An error occurred while submitting your request.');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'An error occurred while submitting your request.');
         } finally {
             setLoading(false);
         }
@@ -249,6 +262,100 @@ export default function CreateAdRequest() {
                         <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--color-primary)', marginBottom: '6px' }}>Total Budget ($)</label>
                         <input className="input input-sm" type="number" placeholder="1500" value={totalBudget} onChange={e => setTotalBudget(e.target.value)} min="1" step="any" />
                     </div>
+                    <div style={{ flex: 1 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--color-primary)', marginBottom: '6px' }}>Max CPC ($)</label>
+                        <input className="input input-sm" type="number" placeholder="0.50" value={maxCpc} onChange={e => setMaxCpc(e.target.value)} min="0.01" step="0.01" />
+                    </div>
+                </div>
+
+                <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '32px 0' }} />
+
+                <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-primary)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <BarChart3 size={20} /> Auction Settings (Quality Score Optimizer)
+                </h3>
+
+                <div style={{ display: 'flex', gap: '20px', marginBottom: '24px' }}>
+                    <div style={{ flex: 1 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--color-primary)', marginBottom: '6px' }}>
+                            <Briefcase size={14} /> Category
+                        </label>
+                        <select 
+                            className="input input-sm" 
+                            value={category} 
+                            onChange={e => setCategory(e.target.value)}
+                            style={{ width: '100%', padding: '8px 12px' }}
+                        >
+                            <option value="GENERAL">General Lifestyle ($0.10 min CPC)</option>
+                            <option value="FASHION_BEAUTY">Fashion & Beauty ($0.15 min CPC)</option>
+                            <option value="FINANCE_INSURANCE">Finance & Insurance ($0.50 min CPC)</option>
+                            <option value="TECH">Technology</option>
+                            <option value="FOOD">Food & Dining</option>
+                            <option value="TRAVEL">Travel & Tourism</option>
+                            <option value="HOME">Home & Garden</option>
+                            <option value="SPORTS">Sports & Fitness</option>
+                            <option value="ENTERTAINMENT">Entertainment</option>
+                        </select>
+                        <p style={{ fontSize: '11px', color: 'var(--color-muted)', marginTop: '4px' }}>
+                            Higher competition categories have higher minimum CPC floors
+                        </p>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--color-primary)', marginBottom: '6px' }}>
+                            <Zap size={14} /> Budget Pacing
+                        </label>
+                        <select 
+                            className="input input-sm" 
+                            value={pacingMode} 
+                            onChange={e => setPacingMode(e.target.value)}
+                            style={{ width: '100%', padding: '8px 12px' }}
+                        >
+                            <option value="STANDARD">Standard (Spread evenly across 24h)</option>
+                            <option value="ACCELERATED">Accelerated (Spend as fast as possible)</option>
+                        </select>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--color-primary)', marginBottom: '6px' }}>
+                            <TrendingUp size={14} /> Expected CTR
+                        </label>
+                        <input 
+                            className="input input-sm" 
+                            type="number" 
+                            placeholder="0.02" 
+                            value={expectedCtr} 
+                            onChange={e => setExpectedCtr(e.target.value)} 
+                            min="0.001" 
+                            max="0.5" 
+                            step="0.001"
+                        />
+                        <p style={{ fontSize: '11px', color: 'var(--color-muted)', marginTop: '4px' }}>
+                            Est. click-through rate (2% = 0.02). Affects Quality Score (40% weight)
+                        </p>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--color-primary)', marginBottom: '6px' }}>
+                            <LinkIcon size={14} /> Landing Page URL
+                        </label>
+                        <input 
+                            className="input input-sm" 
+                            type="url" 
+                            placeholder="https://..." 
+                            value={landingPageUrl} 
+                            onChange={e => setLandingPageUrl(e.target.value)}
+                        />
+                        <p style={{ fontSize: '11px', color: 'var(--color-muted)', marginTop: '4px' }}>
+                            Used for landing page quality scoring (15% of QS)
+                        </p>
+                    </div>
+                </div>
+
+                <div style={{ background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: '8px', padding: '16px', marginBottom: '32px' }}>
+                    <p style={{ fontSize: '13px', color: '#166534', fontWeight: 600, marginBottom: '8px' }}>
+                        🚀 Starter Boost Enabled
+                    </p>
+                    <p style={{ fontSize: '12px', color: '#15803D' }}>
+                        New ads receive a temporary Quality Score of 5.0 for the first 500 impressions to gather real performance data. 
+                        After 500 impressions, your actual QS (based on 40% CTR + 30% Relevance + 15% Landing Page + 15% Engagement) will determine ad rank.
+                    </p>
                 </div>
 
                 <div style={{ marginBottom: '32px', fontSize: '12px', color: 'var(--color-muted)' }}>

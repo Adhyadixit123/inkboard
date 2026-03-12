@@ -4,13 +4,22 @@ import Link from 'next/link';
 import { Flame, Megaphone } from 'lucide-react';
 import { PostCard } from './PostCard';
 import { PostCardSkeleton } from './PostCardSkeleton';
-import { MOCK_POSTS, MOCK_INTERESTS } from '@/lib/mockData';
+import { MOCK_INTERESTS } from '@/lib/mockData';
 import type { Post } from '@/types';
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
 const INTERESTS_STRIP = MOCK_INTERESTS.slice(0, 12);
+
+type FeedAd = {
+    id: string;
+    title: string;
+    description?: string | null;
+    image_url: string;
+    image_urls?: string[] | null;
+    target_url: string;
+};
 
 // ─── Stable column buckets ────────────────────────────────────────────────────
 // We render N separate column divs and assign each post to a column by its
@@ -33,9 +42,32 @@ function useColumnCount(): number {
     return cols;
 }
 
-function MasonryAdCard({ ad, index }: { ad: any, index: number }) {
+function MasonryAdCard({ ad, index }: { ad: FeedAd, index: number }) {
     const images = ad.image_urls && ad.image_urls.length > 0 ? ad.image_urls : [ad.image_url];
     const [currentImg, setCurrentImg] = useState(0);
+
+    const handleAdClick = async (event: React.MouseEvent<HTMLAnchorElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        try {
+            await fetch('/api/ads/click', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    adId: ad.id,
+                    location: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    deviceType: /Mobi|Android/i.test(window.navigator.userAgent) ? 'Mobile' : 'Desktop',
+                    osFamily: window.navigator.platform || 'Unknown',
+                }),
+                keepalive: true,
+            });
+        } catch (err) {
+            console.error('[ads] click tracking failed', err);
+        }
+
+        window.open(ad.target_url, '_blank', 'noopener,noreferrer');
+    };
 
     useEffect(() => {
         if (images.length <= 1) return;
@@ -50,7 +82,7 @@ function MasonryAdCard({ ad, index }: { ad: any, index: number }) {
     return (
         <div className="masonry-item fade-up" style={{ animationDelay: `${index * 60}ms` }}>
             <article className="post-card" style={{ border: '2px solid var(--color-accent)', background: 'var(--color-surface)', position: 'relative' }}>
-                <a href={ad.target_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ position: 'absolute', inset: 0, zIndex: 10 }} aria-label={`View ${ad.title}`} />
+                <a href={ad.target_url} target="_blank" rel="noopener noreferrer" onClick={handleAdClick} style={{ position: 'absolute', inset: 0, zIndex: 10 }} aria-label={`View ${ad.title}`} />
                 <div style={{ position: 'relative', paddingBottom: dynamicPaddingBottom, height: 0, overflow: 'hidden' }}>
                     <div className="trending-badge" style={{ background: 'var(--color-primary)', color: 'var(--color-surface)', top: 12, left: 12, right: 'auto', bottom: 'auto', zIndex: 20 }}>
                         <Megaphone size={10} /> Sponsored
@@ -83,12 +115,12 @@ function MasonryAdCard({ ad, index }: { ad: any, index: number }) {
     );
 }
 
-function MasonryColumns({ items }: { items: any[] }) {
+function MasonryColumns({ items }: { items: Array<Post | FeedAd> }) {
     const numCols = useColumnCount();
 
     // Build column arrays — each post goes to col = index % numCols
     const columns = useMemo(() => {
-        const cols: any[][] = Array.from({ length: numCols }, () => []);
+        const cols: Array<Array<Post | FeedAd>> = Array.from({ length: numCols }, () => []);
         items.forEach((item, i) => cols[i % numCols].push(item));
         return cols;
     }, [items, numCols]);
@@ -125,9 +157,14 @@ function FeedInner({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
     const [page, setPage] = useState(1);
     const [activeInterest, setActiveInterest] = useState<string | null>(null);
     const [hasMore, setHasMore] = useState(true);
-    const [ads, setAds] = useState<any[]>([]);
+    const [ads, setAds] = useState<FeedAd[]>([]);
     const loaderRef = useRef<HTMLDivElement>(null);
     const supabase = createClient();
+
+    type FeedResponse = {
+        posts?: Post[];
+        hasMore?: boolean;
+    };
 
     // Initial load from Edge Function & fetch ads
     useEffect(() => {
@@ -147,7 +184,7 @@ function FeedInner({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
             .select('*')
             .in('status', ['APPROVED', 'ACTIVE'])
             .limit(5)
-            .then(({ data }: any) => {
+            .then(({ data }: { data: FeedAd[] | null }) => {
                 if (data) setAds(data);
             });
     }, [currentTopic, supabase]);
@@ -173,7 +210,7 @@ function FeedInner({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
         setLoadingMore(true);
         fetch(`/api/feed?topic=${encodeURIComponent(currentTopic)}&page=${page}`)
             .then(res => res.json())
-            .then(data => {
+            .then((data: FeedResponse) => {
                 if (data.posts && data.posts.length > 0) {
                     setPosts(prev => {
                         const ids = new Set(prev.map(p => p.id));
@@ -313,7 +350,7 @@ function FeedInner({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
             {/* End of feed */}
             {(!hasMore && !loading) && (
                 <div style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--color-muted)', fontFamily: 'var(--font-ui)', fontSize: '14px' }}>
-                    <p>✨ You've seen all the stories for now. Refresh for more.</p>
+                    <p>✨ You&apos;ve seen all the stories for now. Refresh for more.</p>
                 </div>
             )}
         </>

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { Post, User } from '@/types';
-import { postRepository } from '@/lib/postRepository';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import crypto from 'crypto';
 
 // Generate a deterministic user ID per source
 function getSourceAuthor(sourceName: string, role: User['role'] = 'USER'): User {
@@ -26,6 +27,18 @@ function getSourceAuthor(sourceName: string, role: User['role'] = 'USER'): User 
     };
 }
 
+function slugify(value: string) {
+    return (value || 'external-source')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '')
+        || 'external-source';
+}
+
+type StoredPost = Post & {
+    source_name?: string;
+};
+
 export class ContentIngestionService {
     async fetchDevTo(): Promise<Post[]> {
         try {
@@ -48,7 +61,7 @@ export class ContentIngestionService {
                 status: 'PUBLISHED',
                 engagement_score: 100,
                 like_count: Math.floor(Math.random() * 500),
-                comment_count: Math.floor(Math.random() * 50),
+                comment_count: 0,
                 share_count: 0,
                 is_trending: Math.random() > 0.8,
             }));
@@ -62,6 +75,10 @@ export class ContentIngestionService {
         try {
             const { data } = await axios.get('https://en.wikinews.org/w/api.php', {
                 timeout: 10000,
+                headers: {
+                    'User-Agent': 'InkboardBot/1.0 (+https://localhost; contact: admin@inkboard.local)',
+                    'Accept': 'application/json,text/plain,*/*',
+                },
                 params: {
                     action: 'query',
                     list: 'recentchanges',
@@ -86,7 +103,13 @@ export class ContentIngestionService {
             const htmlPagesSettled = await Promise.allSettled(
                 limited.map(async (t: WikinewsRecentItem) => {
                     const titleSlug = t.title.replace(/ /g, '_');
-                    const htmlRes = await axios.get(`https://en.wikinews.org/api/rest_v1/page/html/${encodeURIComponent(titleSlug)}`, { timeout: 10000 });
+                    const htmlRes = await axios.get(`https://en.wikinews.org/api/rest_v1/page/html/${encodeURIComponent(titleSlug)}`, {
+                        timeout: 10000,
+                        headers: {
+                            'User-Agent': 'InkboardBot/1.0 (+https://localhost; contact: admin@inkboard.local)',
+                            'Accept': 'text/html,application/xhtml+xml',
+                        },
+                    });
                     const html = typeof htmlRes.data === 'string' ? htmlRes.data : '';
                     return { ...t, titleSlug, html };
                 })
@@ -123,7 +146,7 @@ export class ContentIngestionService {
                         status: 'PUBLISHED',
                         engagement_score: 100,
                         like_count: Math.floor(Math.random() * 500),
-                        comment_count: Math.floor(Math.random() * 50),
+                        comment_count: 0,
                         share_count: 0,
                         is_trending: Math.random() > 0.85,
                     };
@@ -176,7 +199,7 @@ export class ContentIngestionService {
                 status: 'PUBLISHED',
                 engagement_score: 100,
                 like_count: Math.floor(Math.random() * 500),
-                comment_count: Math.floor(Math.random() * 50),
+                comment_count: 0,
                 share_count: 0,
                 is_trending: Math.random() > 0.8,
             }));
@@ -209,7 +232,7 @@ export class ContentIngestionService {
                 status: 'PUBLISHED',
                 engagement_score: 100,
                 like_count: Math.floor(Math.random() * 500),
-                comment_count: Math.floor(Math.random() * 50),
+                comment_count: 0,
                 share_count: 0,
                 is_trending: Math.random() > 0.8,
             }));
@@ -220,17 +243,115 @@ export class ContentIngestionService {
     }
 
     async ingestAll(): Promise<void> {
-        console.log('Ingesting content from new APIs...');
+        console.log('Ingesting content from external sources...');
         const [devto, hashnode, wikinews] = await Promise.all([
             this.fetchDevTo(),
             this.fetchHashnode(),
             this.fetchWikinews()
         ]);
 
-        const allIngested = [...devto, ...hashnode, ...wikinews];
+        const allIngested: StoredPost[] = [...devto, ...hashnode, ...wikinews];
 
-        const addedCount = await postRepository.upsertMany(allIngested);
-        console.log(`Ingested ${addedCount} new external posts!`);
+        let stored = 0;
+        for (const post of allIngested) {
+            try {
+                await this.storePost(post as StoredPost);
+                stored++;
+            } catch (err) {
+                console.error('Failed to persist post', post.id, err);
+            }
+        }
+
+        console.log(`Ingestion complete. Stored ${stored} posts in Supabase.`);
+    }
+
+    private async storePost(post: StoredPost) {
+        if (!post?.source_url) return;
+
+        const sourceName = post.source_name || post.author?.display_name || post.source?.toUpperCase() || 'External Source';
+        const sourceSlug = slugify(sourceName);
+
+        const tagNames = (post.tags ?? [])
+            .map(tag => (typeof tag?.name === 'string' ? tag.name.trim() : ''))
+            .filter(Boolean);
+
+        let tagIds: string[] = [];
+        if (tagNames.length) {
+            const { data: tagsData, error: tagError } = await supabaseAdmin
+                .from('tags')
+                .upsert(tagNames.map(name => ({ name })), { onConflict: 'name' })
+                .select('id, name');
+
+            if (tagError) throw tagError;
+            tagIds = (tagsData ?? []).map(t => t.id);
+        }
+
+        const { data: sourceRecord, error: sourceError } = await supabaseAdmin
+            .from('external_sources')
+            .upsert({
+                slug: sourceSlug,
+                name: sourceName,
+                display_name: sourceName,
+                avatar_url: post.author?.avatar_url,
+                profile_url: post.source_url,
+                metadata: {
+                    platform: post.source,
+                },
+            }, { onConflict: 'slug' })
+            .select('id')
+            .single();
+
+        if (sourceError) throw sourceError;
+        if (!sourceRecord?.id) throw new Error('Failed to resolve external_sources record id');
+
+        const { data: existingPost, error: existingPostError } = await supabaseAdmin
+            .from('posts')
+            .select('id')
+            .eq('source_url', post.source_url)
+            .maybeSingle();
+
+        if (existingPostError && existingPostError.code !== 'PGRST116') {
+            throw existingPostError;
+        }
+
+        const postId = existingPost?.id ?? crypto.randomUUID();
+
+        const payload = {
+            id: postId,
+            author_id: null,
+            title: post.title,
+            subtitle: post.subtitle || '',
+            content: post.content ? { html: post.content } : null,
+            cover_image_url: post.cover_image_url,
+            cover_aspect_ratio: post.cover_aspect_ratio,
+            status: post.status,
+            read_time_minutes: post.read_time_minutes,
+            engagement_score: post.engagement_score,
+            created_at: post.created_at,
+            published_at: post.published_at,
+            updated_at: post.published_at || post.created_at,
+            source_id: sourceRecord.id,
+            source_platform: post.source,
+            source_url: post.source_url,
+            like_count: post.like_count ?? 0,
+            comment_count: post.comment_count ?? 0,
+            share_count: post.share_count ?? 0,
+            is_trending: post.is_trending ?? false,
+        } as const;
+
+        const { error: postError } = await supabaseAdmin
+            .from('posts')
+            .upsert(payload, { onConflict: 'id' });
+
+        if (postError) throw postError;
+
+        if (tagIds.length) {
+            const rows = tagIds.map(tag_id => ({ post_id: postId, tag_id }));
+            const { error: postTagsError } = await supabaseAdmin
+                .from('post_tags')
+                .upsert(rows, { onConflict: 'post_id,tag_id' });
+            if (postTagsError) throw postTagsError;
+        }
     }
 }
 

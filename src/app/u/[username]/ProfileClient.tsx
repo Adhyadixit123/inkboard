@@ -4,20 +4,19 @@ import Link from 'next/link';
 import { MapPin, Share2, Plus, Grid } from 'lucide-react';
 import type { User, Post } from '@/types';
 import { PostCard } from '@/components/PostCard';
+import FollowButton from '@/components/FollowButton';
 
 function formatK(n: number) { return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`; }
 
-interface Props { user: User; posts: Post[]; likedPosts: Post[]; }
+interface Props { 
+    user: User; 
+    posts: Post[]; 
+    likedPosts: Post[]; 
+    isOwnProfile?: boolean;
+}
 
-export function ProfileClient({ user, posts, likedPosts }: Props) {
-    const [following, setFollowing] = useState(false);
-    const [followerCount, setFollowerCount] = useState(user.follower_count);
+export function ProfileClient({ user, posts, likedPosts, isOwnProfile = false }: Props) {
     const [activeTab, setActiveTab] = useState<'pins' | 'boards' | 'collages'>('pins');
-
-    const handleFollow = () => {
-        setFollowing(!following);
-        setFollowerCount(c => following ? c - 1 : c + 1);
-    };
 
     const handleShare = () => {
         if (navigator.share) {
@@ -54,9 +53,18 @@ export function ProfileClient({ user, posts, likedPosts }: Props) {
                             <img src={user.avatar_url} alt={user.display_name} className="avatar" style={{ width: '48px', height: '48px' }} />
                             <div style={{ lineHeight: 1.2 }}>
                                 <div style={{ fontWeight: 700, fontFamily: 'var(--font-ui)' }}>{user.display_name}</div>
-                                <div style={{ fontSize: '12px', color: 'var(--color-muted)' }}>{formatK(followerCount)} followers</div>
+                                <div style={{ fontSize: '12px', color: 'var(--color-muted)' }}>
+                                    {formatK(user.follower_count || 0)} followers • {formatK(user.following_count || 0)} following
+                                </div>
                             </div>
                         </div>
+                        {!isOwnProfile && user.id && (
+                            <FollowButton 
+                                targetUserId={user.id}
+                                showCounts={false}
+                                size="sm"
+                            />
+                        )}
                         <button onClick={handleShare} className="btn btn-ghost btn-sm" style={{ padding: '10px 14px', borderRadius: '20px' }}>
                             Share profile
                         </button>

@@ -1,8 +1,8 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Search, Bell, PenSquare, LogOut } from 'lucide-react';
-import { MOCK_NOTIFICATIONS } from '@/lib/mockData';
+import { usePathname } from 'next/navigation';
+import { Search, Bell, PenSquare, LogOut, Shield } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { createPortal } from 'react-dom';
 
@@ -11,46 +11,109 @@ const TOPICS = [
     'Food', 'Art', 'Culture', 'Health', 'Business', 'Sports', 'AI', 'Startups'
 ];
 
-// Simulated auth state
-const DEMO_USER = {
-    id: 'u3',
-    username: 'elise_page',
-    display_name: 'Élise Dupont',
-    avatar_url: 'https://i.pravatar.cc/150?img=25',
+type NavNotification = {
+    id: string;
+    type?: string;
+    is_read?: boolean;
+    created_at?: string;
+    post_title?: string;
+    actor_display_name?: string;
+    actor_avatar_url?: string;
 };
 
 export function Navbar() {
+    const pathname = usePathname();
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [userEmail, setUserEmail] = useState<string | null>(null);
+    const [currentUser, setCurrentUser] = useState<{ display_name: string; avatar_url: string; role: string; is_business: boolean } | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [notifOpen, setNotifOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const [profileMenuOpen, setProfileMenuOpen] = useState(false);
     const [profileMenuPos, setProfileMenuPos] = useState<{ top: number; right: number } | null>(null);
+    const [notifications, setNotifications] = useState<NavNotification[]>([]);
     const supabase = createClient();
     const profileMenuRef = useRef<HTMLDivElement | null>(null);
     const profileTriggerRef = useRef<HTMLButtonElement | null>(null);
     const profileMenuElRef = useRef<HTMLDivElement | null>(null);
+    const isAdmin = currentUser?.role === 'ADMIN';
+    const isBusiness = Boolean(currentUser?.is_business);
 
     useEffect(() => {
+        const hydrateUser = async (userId: string | undefined) => {
+            if (!userId) {
+                setCurrentUser(null);
+                return;
+            }
+
+            const fetchProfile = async () => {
+                const { data } = await supabase
+                    .from('users')
+                    .select('display_name, avatar_url, role, is_business')
+                    .eq('id', userId)
+                    .maybeSingle();
+                return data;
+            };
+
+            let profile = await fetchProfile();
+
+            if (!profile) {
+                try {
+                    await fetch('/api/users/sync', { method: 'POST' });
+                    profile = await fetchProfile();
+                } catch (err) {
+                    console.error('Failed to sync profile', err);
+                }
+            }
+
+            setCurrentUser({
+                display_name: profile?.display_name || 'Inkboard User',
+                avatar_url: profile?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=160&q=80',
+                role: profile?.role || 'USER',
+                is_business: Boolean(profile?.is_business),
+            });
+        };
+
+        const loadNotifications = async (userId: string | undefined) => {
+            if (!userId) {
+                setNotifications([]);
+                return;
+            }
+
+            const { data, error } = await supabase
+                .from('notifications')
+                .select('*')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            if (!error) {
+                setNotifications((data ?? []) as NavNotification[]);
+            }
+        };
+
         const checkSession = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             setIsLoggedIn(!!session);
             setUserEmail(session?.user?.email || null);
+            await hydrateUser(session?.user?.id);
+            await loadNotifications(session?.user?.id);
         };
         checkSession();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            (event: any, session: any) => {
+            async (_event: any, session: any) => {
                 setIsLoggedIn(!!session);
                 setUserEmail(session?.user?.email || null);
+                await hydrateUser(session?.user?.id);
+                await loadNotifications(session?.user?.id);
             }
         );
 
         return () => subscription.unsubscribe();
     }, [supabase.auth]);
 
-    const unreadCount = MOCK_NOTIFICATIONS.filter(n => !n.is_read).length;
+    const unreadCount = notifications.filter(n => !n.is_read).length;
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 8);
@@ -117,6 +180,10 @@ export function Navbar() {
         </form>
     );
 
+    if (pathname.startsWith('/admin')) {
+        return null;
+    }
+
     return (
         <header className={`navbar-shell ${scrolled ? 'navbar-scrolled' : ''}`}>
             <div className="navbar-inner">
@@ -129,6 +196,12 @@ export function Navbar() {
                 <div className="navbar-actions">
                     {isLoggedIn ? (
                         <>
+                            {isAdmin && (
+                                <Link href="/admin" className="btn btn-secondary btn-sm hide-mobile">
+                                    <Shield size={14} /> Admin Console
+                                </Link>
+                            )}
+
                             <Link href="/compose" className="btn btn-primary btn-sm hide-mobile">
                                 <PenSquare size={14} /> Write
                             </Link>
@@ -152,12 +225,12 @@ export function Navbar() {
                                             <button className="btn btn-ghost btn-sm">Mark all read</button>
                                         </div>
                                         <div className="notif-panel-body">
-                                            {MOCK_NOTIFICATIONS.map(n => (
+                                            {notifications.map(n => (
                                                 <div key={n.id} className={`notif-item ${!n.is_read ? 'unread' : ''}`}>
-                                                    <img src={n.actor.avatar_url} alt={n.actor.display_name} className="avatar" style={{ width: '36px', height: '36px' }} />
+                                                    <img src={n.actor_avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=160&q=80'} alt={n.actor_display_name || 'User'} className="avatar" style={{ width: '36px', height: '36px' }} />
                                                     <div style={{ flex: 1 }}>
                                                         <p style={{ fontSize: '13px', lineHeight: '1.4' }}>
-                                                            <strong>{n.actor.display_name}</strong>
+                                                            <strong>{n.actor_display_name || 'Someone'}</strong>
                                                             {n.type === 'LIKE' && ` liked your post`}
                                                             {n.type === 'COMMENT' && ` commented on your post`}
                                                             {n.type === 'REPLY' && ` replied to your comment`}
@@ -166,12 +239,17 @@ export function Navbar() {
                                                             {n.post_title && <span style={{ color: 'var(--color-muted)' }}> "{n.post_title.slice(0, 40)}…"</span>}
                                                         </p>
                                                         <p style={{ fontSize: '11px', color: 'var(--color-muted)', marginTop: '3px' }}>
-                                                            {new Date(n.created_at).toLocaleDateString('en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                            {n.created_at
+                                                                ? new Date(n.created_at).toLocaleDateString('en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                                                : 'Just now'}
                                                         </p>
                                                     </div>
                                                     {!n.is_read && <div className="notif-dot" />}
                                                 </div>
                                             ))}
+                                            {notifications.length === 0 && (
+                                                <p style={{ fontSize: '13px', color: 'var(--color-muted)', padding: '10px' }}>No notifications yet.</p>
+                                            )}
                                         </div>
                                         <div className="notif-panel-footer">
                                             <Link href="/notifications">See all notifications</Link>
@@ -187,9 +265,9 @@ export function Navbar() {
                                     className="profile-trigger"
                                     onClick={() => setProfileMenuOpen(!profileMenuOpen)}
                                 >
-                                    <img src={DEMO_USER.avatar_url} alt={DEMO_USER.display_name} className="avatar" />
+                                    <img src={currentUser?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=160&q=80'} alt={currentUser?.display_name || 'User'} className="avatar" />
                                     <div className="profile-meta hide-mobile">
-                                        <span>{DEMO_USER.display_name}</span>
+                                        <span>{currentUser?.display_name || 'Inkboard User'}</span>
                                         <small>{userEmail}</small>
                                     </div>
                                 </button>
@@ -204,7 +282,13 @@ export function Navbar() {
                                             <Link href="/profile" onClick={() => setProfileMenuOpen(false)}>My profile</Link>
                                             <Link href="/messages" onClick={() => setProfileMenuOpen(false)}>Messages</Link>
                                             <Link href="/notifications" onClick={() => setProfileMenuOpen(false)}>Notifications</Link>
-                                            <Link href="/ads" onClick={() => setProfileMenuOpen(false)}>Ads Center</Link>
+                                            {isBusiness && <Link href="/ads" onClick={() => setProfileMenuOpen(false)}>Ads Center</Link>}
+                                            {!isBusiness && (
+                                                <Link href="/business/request" onClick={() => setProfileMenuOpen(false)}>
+                                                    Become a business partner
+                                                </Link>
+                                            )}
+                                            {isAdmin && <Link href="/admin" onClick={() => setProfileMenuOpen(false)}><Shield size={14} style={{ marginRight: 6 }} />Admin Console</Link>}
                                             <Link href="/settings" onClick={() => setProfileMenuOpen(false)}>Settings</Link>
                                             <button className="profile-menu-logout" onClick={async () => { await supabase.auth.signOut(); setProfileMenuOpen(false); }}>
                                                 <LogOut size={14} /> Sign out

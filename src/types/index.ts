@@ -2,27 +2,27 @@
 
 export interface User {
     id: string;
-    email: string;
+    email?: string;
     username: string;
     display_name: string;
     bio?: string;
     avatar_url?: string;
     location?: string;
-    role: 'USER' | 'MODERATOR' | 'ADMIN';
-    is_verified: boolean;
-    is_suspended: boolean;
-    is_business: boolean;
+    role?: 'USER' | 'MODERATOR' | 'ADMIN';
+    is_verified?: boolean;
+    is_suspended?: boolean;
+    is_business?: boolean;
     created_at: string;
-    follower_count: number;
-    following_count: number;
-    total_likes: number;
-    post_count: number;
+    follower_count?: number;
+    following_count?: number;
+    total_likes?: number;
+    post_count?: number;
 }
 
 export interface Post {
     id: string;
     author_id: string;
-    author: User;
+    author?: User;
     title: string;
     subtitle?: string;
     content?: string;

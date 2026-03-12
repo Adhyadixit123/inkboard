@@ -41,7 +41,10 @@ export default async function PostPage(props: { params: Promise<{ id: string }> 
     }
     const comments: Comment[] = [];
     const allPosts = await postRepository.getAll();
-    const morePosts = allPosts.filter(p => p.author_id === post.author_id && p.id !== post.id).slice(0, 4);
+
+    const sameAuthorPosts = allPosts.filter(p => p.author_id === post.author_id && p.id !== post.id);
+    const fallbackPosts = allPosts.filter(p => p.id !== post.id && p.author_id !== post.author_id);
+    const morePosts = [...sameAuthorPosts, ...fallbackPosts].slice(0, 12);
 
     return <PostDetailClient post={post} comments={comments} morePosts={morePosts} />;
 }
