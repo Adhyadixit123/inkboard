@@ -117,7 +117,7 @@ function PostsView() {
                                     </p>
                                 </td>
                                 <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--color-muted)', fontFamily: 'var(--font-ui)' }}>
-                                    {post.author.display_name}
+                                    {post.author?.display_name || 'Unknown'}
                                 </td>
                                 <td style={{ padding: '12px 16px' }}>
                                     <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
